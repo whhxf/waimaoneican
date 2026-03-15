@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
 from src.fetch_urls import run as run_fetch_urls
 from src.fetch_and_clean import run as run_fetch_clean
 from src.summarize import run as run_summarize
+from src.deploy import deploy
 
 
 def main() -> None:
@@ -24,7 +25,8 @@ def main() -> None:
     print(f"=== 外贸内参 pipeline @ {date} ===")
     run_fetch_urls(date=date)
     run_fetch_clean(date=date)
-    run_summarize(date=date)
+    report_path = run_summarize(date=date)
+    deploy(report_path)
     print("=== 完成 ===")
 
 
