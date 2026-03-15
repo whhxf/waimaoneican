@@ -1,0 +1,21 @@
+# 本地配置，勿提交
+config.env
+.env
+.env.local
+
+# 数据与输出（取消下面两行注释则不会提交，避免把抓取数据和报告推到远程）
+data/
+output/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# 日志
+logs/
+*.log
+
+# 系统
+.DS_Store
