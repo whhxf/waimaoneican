@@ -98,6 +98,89 @@ launchctl load ~/Library/LaunchAgents/com.waimao.neican.plist
 
 在「任务计划程序」中新建任务，触发器为每日指定时间，操作：程序 `python`，参数 `run_daily.py`，起始于项目根目录。
 
+## 部署与在线访问
+
+### 方案 A：本地静态站点 + GitHub + EdgeOne（推荐）
+
+你提到的目标是：放弃 1Panel，改为「生成 HTML → 提交到 GitHub 仓库 `neicanhtml` → 再用腾讯云 EdgeOne / Pages 类似能力做 CDN 加速和 HTTPS」。
+
+项目已经内置了这一流程的自动导出能力：
+
+1. **本地克隆静态站点仓库**
+
+   ```bash
+   # 任选一个目录作为静态仓库位置（建议与本项目同级）
+   cd /path/to/your/workspace
+   git clone git@github.com:whhxf/neicanhtml.git
+   # 或者用 HTTPS：
+   # git clone https://github.com/whhxf/neicanhtml.git
+   ```
+
+2. **在本项目里配置导出目录**
+
+   编辑 `config.env`，增加：
+
+   ```bash
+   NEICAN_GIT_EXPORT_ENABLED=1
+   NEICAN_GIT_EXPORT_DIR=/absolute/path/to/neicanhtml
+   ```
+
+   - `NEICAN_GIT_EXPORT_DIR` 必须是你刚才克隆的 `neicanhtml` 仓库的**绝对路径**，例如：
+     - `NEICAN_GIT_EXPORT_DIR=/Users/conan/project/neicanhtml`
+
+3. **运行日报并导出到静态仓库**
+
+   ```bash
+   cd /Users/conan/project/waimaoneican
+   python run_daily.py
+   ```
+
+   当天跑完后，会在 `NEICAN_GIT_EXPORT_DIR` 目录下自动生成：
+
+   - `neican-YYYY-MM-DD.html`：当期日报（历史可保留多期）
+   - `index.html`：始终指向**最新一期**，方便用作首页
+
+4. **提交并推送到 GitHub**
+
+   ```bash
+   cd /absolute/path/to/neicanhtml
+   git add .
+   git commit -m "feat: 更新外贸内参 YYYY-MM-DD"
+   git push origin main
+   ```
+
+   推送后，你的 `neicanhtml` 仓库就包含了完整的静态 HTML 输出。
+
+5. **在腾讯云 / EdgeOne 上接入该仓库**
+
+   接下来只需要在 EdgeOne 或你选择的前端托管里，把：
+
+   - 源站指向 GitHub Pages / 对应静态托管地址，或
+   - 使用「从 Git 仓库拉取构建」的方式直接指向 `neicanhtml`
+
+   并为你的域名开启 HTTPS、加速。这一步具体按 EdgeOne 面板向导操作即可。
+
+> 小结：以后你只需要每天在本机或定时任务里跑 `python run_daily.py`，然后在 `neicanhtml` 仓库里 `git add/commit/push` 一次，页面就会自动更新到线上。
+
+### 方案 B：继续使用 1Panel / 服务器（原有逻辑，已保留）
+
+若你某天还想回到 1Panel / 轻量服务器方案，可以继续使用 `src/deploy.py` 里保留的旧逻辑：
+
+1. 在 `config.env` 中配置：
+
+   ```bash
+   NEICAN_DEPLOY_ENABLED=1
+   NEICAN_DEPLOY_HOST=root@你的服务器公网IP
+   NEICAN_DEPLOY_PATH=/opt/1panel/apps/openresty/openresty/www/sites/neican
+   ```
+
+2. 跑完 `python run_daily.py` 后，会自动通过 `scp` 上传到服务器目录，生成：
+
+   - `neican-YYYY-MM-DD.html`
+   - `index.html`
+
+两种方案可以**同时打开**（本地 Git 导出 + 服务器 scp），也可以只用其中一种。
+
 ## 项目结构
 
 ```
