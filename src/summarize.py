@@ -90,14 +90,21 @@ def _call_llm(merged: str) -> dict:
     if not api_key:
         raise RuntimeError("未设置 OPENAI_API_KEY，请在 config.env 或环境中配置")
     base_url = os.environ.get("OPENAI_BASE_URL", "").strip() or None
-    model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+    model = os.environ.get("OPENAI_MODEL", "qwen3.5-plus")
 
     client = OpenAI(api_key=api_key, base_url=base_url)
+
+    # 阿里云通义千问 qwen3.5-plus 支持 1M tokens 上下文
+    # 中文环境下 1 token ≈ 1.5 字符，1M tokens ≈ 1,500,000 字符
+    # 预留 50K 字符给 system prompt 和输出响应，输入限制在 1,450,000 字符
+    # 当前设置足够容纳约 3 倍于日常抓取量的数据
+    MAX_INPUT_CHARS = 1_450_000
+
     resp = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": "请根据以下今日抓取的外贸内容，输出一份符合约定结构的 JSON 分析报告。\n\n" + merged[:120000]},
+            {"role": "user", "content": "请根据以下今日抓取的外贸内容，输出一份符合约定结构的 JSON 分析报告。\n\n" + merged[:MAX_INPUT_CHARS]},
         ],
         temperature=0.3,
     )

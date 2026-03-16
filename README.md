@@ -40,9 +40,9 @@ python run_daily.py
 ## 分步执行
 
 ```bash
-python -m src.fetch_urls        # 步骤1：抓取 URL 列表
-python -m src.fetch_and_clean   # 步骤2：拉正文、去噪、写 Markdown
-python -m src.summarize         # 步骤3：合并 MD、调 API、生成报告
+python -m src.fetch_urls        # 步骤 1：抓取 URL 列表
+python -m src.fetch_and_clean   # 步骤 2：拉正文、去噪、写 Markdown
+python -m src.summarize         # 步骤 3：合并 MD、调 API、生成报告
 ```
 
 ## 无人值守（定时任务）
@@ -100,11 +100,9 @@ launchctl load ~/Library/LaunchAgents/com.waimao.neican.plist
 
 ## 部署与在线访问
 
-### 方案 A：本地静态站点 + GitHub + EdgeOne（推荐）
+### GitHub + Cloudflare Pages（推荐）
 
-你提到的目标是：放弃 1Panel，改为「生成 HTML → 提交到 GitHub 仓库 `neicanhtml` → 再用腾讯云 EdgeOne / Pages 类似能力做 CDN 加速和 HTTPS」。
-
-项目已经内置了这一流程的自动导出能力：
+生成 HTML 后提交到 GitHub 仓库 `neicanhtml`，通过 Cloudflare Pages 自动构建发布，支持自定义域名、HTTPS 和全球 CDN 加速。
 
 1. **本地克隆静态站点仓库**
 
@@ -149,37 +147,19 @@ launchctl load ~/Library/LaunchAgents/com.waimao.neican.plist
    git push origin main
    ```
 
-   推送后，你的 `neicanhtml` 仓库就包含了完整的静态 HTML 输出。
+   推送后，Cloudflare Pages 会自动检测到仓库更新并开始构建。
 
-5. **在腾讯云 / EdgeOne 上接入该仓库**
+5. **在 Cloudflare Pages 上接入该仓库**
 
-   接下来只需要在 EdgeOne 或你选择的前端托管里，把：
+   - 打开 Cloudflare Dashboard → Pages → 创建项目 → 连接到 Git
+   - 选择 `neicanhtml` 仓库
+   - 构建设置：无需构建命令，直接部署（因为是纯静态 HTML）
+   - 自定义域名：绑定你的域名（如 `nc.kingswayai.cloud`）
+   - 启用 HTTPS（Cloudflare 自动提供）
 
-   - 源站指向 GitHub Pages / 对应静态托管地址，或
-   - 使用「从 Git 仓库拉取构建」的方式直接指向 `neicanhtml`
+   构建完成后，访问 `https://你的域名/neican-YYYY-MM-DD.html` 即可在线查看日报。
 
-   并为你的域名开启 HTTPS、加速。这一步具体按 EdgeOne 面板向导操作即可。
-
-> 小结：以后你只需要每天在本机或定时任务里跑 `python run_daily.py`，然后在 `neicanhtml` 仓库里 `git add/commit/push` 一次，页面就会自动更新到线上。
-
-### 方案 B：继续使用 1Panel / 服务器（原有逻辑，已保留）
-
-若你某天还想回到 1Panel / 轻量服务器方案，可以继续使用 `src/deploy.py` 里保留的旧逻辑：
-
-1. 在 `config.env` 中配置：
-
-   ```bash
-   NEICAN_DEPLOY_ENABLED=1
-   NEICAN_DEPLOY_HOST=root@你的服务器公网IP
-   NEICAN_DEPLOY_PATH=/opt/1panel/apps/openresty/openresty/www/sites/neican
-   ```
-
-2. 跑完 `python run_daily.py` 后，会自动通过 `scp` 上传到服务器目录，生成：
-
-   - `neican-YYYY-MM-DD.html`
-   - `index.html`
-
-两种方案可以**同时打开**（本地 Git 导出 + 服务器 scp），也可以只用其中一种。
+> **小结**：每天跑完 `python run_daily.py` 后，在 `neicanhtml` 仓库里 `git add/commit/push` 一次，页面就会自动更新到线上。访问类似 `https://nc.kingswayai.cloud/neican-2026-03-16.html` 查看当日报告。
 
 ## 项目结构
 

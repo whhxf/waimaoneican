@@ -1,8 +1,8 @@
 ---
 name: waimao-neican
-description: 每日抓取雨果网50条、邦阅网50条、米课圈100条，清洗为 Markdown 素材并落盘，合并后调用环境 API 生成带来源 URL 的外贸内参日报；支持一键运行或定时无人值守；可选生成后自动部署到腾讯云轻量（1Panel）二级域名。触发词：每日外贸内参、外贸日报、外贸内参、/neican
+description: 每日抓取雨果网 50 条、邦阅网 50 条、米课圈 100 条，清洗为 Markdown 素材并落盘，合并后调用环境 API 生成带来源 URL 的外贸内参日报；支持一键运行或定时无人值守；可选生成后自动提交到 Git 仓库，通过 Cloudflare Pages 实现全球 CDN 加速和 HTTPS 访问。触发词：每日外贸内参、外贸日报、外贸内参、/neican
 metadata:
-  version: 1.0.0
+  version: 1.1.0
   scope: project
 ---
 
@@ -27,7 +27,7 @@ metadata:
 python run_daily.py
 ```
 
-将依次执行：抓取 URL → 拉正文并清洗为 Markdown → 合并当日 Markdown → 调用环境配置的大模型 API → 生成 HTML 日报；若已开启部署，会再自动上传到腾讯云轻量服务器。输出在 `output/reports/neican-YYYY-MM-DD.html`，素材在 `data/markdown/`。
+将依次执行：抓取 URL → 拉正文并清洗为 Markdown → 合并当日 Markdown → 调用环境配置的大模型 API → 生成 HTML 日报；若已开启部署，会再自动提交到 Git 仓库并通过 Cloudflare Pages 发布。输出在 `output/reports/neican-YYYY-MM-DD.html`，素材在 `data/markdown/`。
 
 ### 分步执行
 
@@ -44,7 +44,7 @@ python -m src.summarize
 
 ### 无人值守（定时任务）
 
-- **macOS / Linux (cron)**：每日 6:00 执行  
+- **macOS / Linux (cron)**：每日 6:00 执行
   `0 6 * * * cd /path/to/msg-listener && python run_daily.py`
 
 - **macOS (launchd)**：在 `README.md` 中查看 plist 示例与加载方式。
@@ -61,63 +61,88 @@ python -m src.summarize
 
 详见项目根目录 `README.md`。
 
-## 可选：生成后自动部署到腾讯云轻量（1Panel + 二级域名）
+## 可选：生成后自动提交到 Git 仓库 + Cloudflare Pages 部署
 
-生成 HTML 日报后，可将报告自动上传到已安装 1Panel 的腾讯云轻量服务器，通过二级域名访问。不配置则不会执行部署。
+生成 HTML 日报后，可将报告自动提交到 GitHub 仓库 `neicanhtml`，该仓库已连接 Cloudflare Pages，会自动构建并发布，通过自定义域名 + HTTPS 全球 CDN 加速访问。不配置则不会执行部署。
 
 ### 配置项（config.env）
 
 在 `config.env` 中增加（或取消注释）：
 
 ```bash
-NEICAN_DEPLOY_ENABLED=1
-NEICAN_DEPLOY_HOST=root@你的服务器公网IP
-NEICAN_DEPLOY_PATH=/opt/1panel/apps/openresty/neican
+NEICAN_GIT_EXPORT_ENABLED=1
+NEICAN_GIT_EXPORT_DIR=/absolute/path/to/neicanhtml
 ```
 
-- `NEICAN_DEPLOY_ENABLED`：设为 `1`、`true`、`yes` 之一即开启部署。
-- `NEICAN_DEPLOY_HOST`：SSH 登录，格式 `用户@IP`（如 `root@43.xxx.xxx.xxx`）。
-- `NEICAN_DEPLOY_PATH`：服务器上网站根目录的绝对路径（1Panel 里创建站点后对应的目录）。
+- `NEICAN_GIT_EXPORT_ENABLED`：设为 `1`、`true`、`yes` 之一即开启部署。
+- `NEICAN_GIT_EXPORT_DIR`：本地 `neicanhtml` Git 仓库的**绝对路径**。
 
 ### 具体操作步骤
 
-1. **在腾讯云轻量服务器上安装 1Panel**（若未安装）  
-   按 [1Panel 官方文档](https://1panel.cn/docs/) 安装，并确保 SSH 已开放（默认 22 端口）。
+1. **本地克隆静态站点仓库**
 
-2. **在 1Panel 中创建静态网站并绑定二级域名**  
-   - 打开 1Panel → 网站 → 创建网站，选择「静态网站」或使用 OpenResty/Nginx 建站。  
-   - 域名填你的二级域名（如 `neican.yourdomain.com`）。  
-   - 记下「网站根目录」或「运行目录」，例如：`/opt/1panel/apps/openresty/neican`（以你实际 1Panel 显示的路径为准）。  
-   - 将该路径填到本机 `config.env` 的 `NEICAN_DEPLOY_PATH`。
+   ```bash
+   # 任选一个目录作为静态仓库位置（建议与本项目同级）
+   cd /path/to/your/workspace
+   git clone git@github.com:whhxf/neicanhtml.git
+   # 或者用 HTTPS：
+   # git clone https://github.com/whhxf/neicanhtml.git
+   ```
 
-3. **配置二级域名解析**  
-   - 在域名服务商处为二级域名添加 A 记录，指向轻量服务器公网 IP。  
-   - 若用 HTTPS，在 1Panel 中为该站点申请 SSL（如 Let’s Encrypt）。
+2. **在本项目里配置导出目录**
 
-4. **本机 SSH 免密登录服务器（推荐）**  
-   - 本机执行：`ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519`（无则生成）。  
-   - 将公钥写入服务器：`ssh-copy-id root@你的服务器IP`，按提示输入密码。  
-   - 之后执行 `python run_daily.py` 时，部署步骤将自动用 SCP 上传，无需再输密码。
+   编辑 `config.env`，增加：
 
-5. **开启部署并运行**  
-   - 在 `config.env` 中设置 `NEICAN_DEPLOY_ENABLED=1` 以及上述 `NEICAN_DEPLOY_HOST`、`NEICAN_DEPLOY_PATH`。  
-   - 在项目根目录执行：`python run_daily.py`。  
-   - 生成日报后会自动上传：  
-     - `neican-YYYY-MM-DD.html` 保留日期文件（可做历史链接）；  
-     - 同时覆盖 `index.html`，访问二级域名根即最新一期。
+   ```bash
+   NEICAN_GIT_EXPORT_ENABLED=1
+   NEICAN_GIT_EXPORT_DIR=/absolute/path/to/neicanhtml
+   ```
 
-6. **验证**  
-   - 浏览器打开 `https://你的二级域名`，应看到当日外贸内参日报。
+   `NEICAN_GIT_EXPORT_DIR` 必须是你刚才克隆的 `neicanhtml` 仓库的**绝对路径**。
 
-### 仅手动部署当前报告
+3. **运行日报并导出到静态仓库**
 
-若只想上传已有报告、不跑完整 pipeline，在项目根目录执行：
+   ```bash
+   cd /path/to/waimaoneican
+   python run_daily.py
+   ```
+
+   跑完后，会在 `NEICAN_GIT_EXPORT_DIR` 目录下自动生成：
+   - `neican-YYYY-MM-DD.html`：当期日报（历史可保留多期）
+   - `index.html`：始终指向**最新一期**，方便用作首页
+
+4. **提交并推送到 GitHub**
+
+   ```bash
+   cd /absolute/path/to/neicanhtml
+   git add .
+   git commit -m "feat: 更新外贸内参 YYYY-MM-DD"
+   git push origin main
+   ```
+
+   推送后，Cloudflare Pages 会自动检测到仓库更新并开始构建。
+
+5. **在 Cloudflare Pages 上接入该仓库**
+
+   - 打开 Cloudflare Dashboard → Pages → 创建项目 → 连接到 Git
+   - 选择 `neicanhtml` 仓库
+   - 构建设置：无需构建命令，直接部署（因为是纯静态 HTML）
+   - 自定义域名：绑定你的域名（如 `nc.kingswayai.cloud`）
+   - 启用 HTTPS（Cloudflare 自动提供）
+
+   构建完成后，访问 `https://你的域名/neican-YYYY-MM-DD.html` 即可在线查看日报。
+
+> **小结**：每天跑完 `python run_daily.py` 后，在 `neicanhtml` 仓库里 `git add/commit/push` 一次，页面就会自动更新到线上。
+
+### 仅手动提交当前报告
+
+若只想提交已有报告、不跑完整 pipeline，在项目根目录执行：
 
 ```bash
-python -m src.deploy
+python -m src.git_export
 ```
 
-会读取当日日期，上传 `output/reports/neican-YYYY-MM-DD.html`（若存在）。
+会读取当日日报并复制到 Git 仓库目录（需配置 `NEICAN_GIT_EXPORT_DIR`）。
 
 ## 输出与素材
 

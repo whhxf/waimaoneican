@@ -1,6 +1,6 @@
 """
-步骤2：根据 data/urls/ 中的 URL 列表，用 Playwright 直接访问并提取标题和正文（精准选择器），
-去噪后按日+来源写入 data/markdown/YYYY-MM-DD_来源.md。
+步骤 2：根据 data/urls/ 中的 URL 列表，用 Playwright 直接访问并提取标题和正文（精准选择器），
+去噪后按日 + 来源写入 data/markdown/YYYY-MM-DD_来源.md。
 
 选择器规则：
 - 邦阅网：标题 class="indent"，正文 class="article-content"
@@ -84,7 +84,7 @@ def _extract_with_playwright(page, url: str) -> dict:
 
 
 def _clean_body(raw: str) -> str:
-    """简单清洗：去空行、截断。"""
+    """简单清洗：去空行、保留完整段落。"""
     if not raw:
         return ""
     lines = raw.split("\n")
@@ -93,12 +93,19 @@ def _clean_body(raw: str) -> str:
         line = line.strip()
         if not line:
             continue
-        if len(line) > 1200:
-            line = line[:1200] + "\n…"
+        # 单行限制放宽到 5000 字符，保留完整段落
+        if len(line) > 5000:
+            line = line[:5000] + "\n…"
         out.append(line)
     text = "\n".join(out).strip()
+    # 优先在段落边界截断，而不是硬截断
     if len(text) > MAX_BODY_CHARS:
-        text = text[:MAX_BODY_CHARS] + "\n\n…"
+        # 尝试在靠近限制处的换行符位置截断
+        cut_pos = MAX_BODY_CHARS
+        newline_pos = text.rfind("\n", MAX_BODY_CHARS - 1000, MAX_BODY_CHARS)
+        if newline_pos > 0:
+            cut_pos = newline_pos
+        text = text[:cut_pos] + "\n\n（内容过长，已截断）"
     return text
 
 
@@ -107,7 +114,7 @@ def _build_markdown(source_name: str, date: str, items: list[dict]) -> str:
     lines = [
         f"# {source_name} - {date}",
         "",
-        f"抓取时间: {datetime.now().isoformat()}",
+        f"抓取时间：{datetime.now().isoformat()}",
         f"共 {len(items)} 条",
         "",
         "---",
@@ -133,7 +140,7 @@ def _build_markdown(source_name: str, date: str, items: list[dict]) -> str:
 
 
 def run(date: str | None = None, test_limit: int | None = None) -> dict[str, Path]:
-    """读取当日 URL 列表，拉正文、清洗、写 Markdown。返回 {来源名: 文件路径}。
+    """读取当日 URL 列表，拉正文、清洗、写 Markdown。返回 {来源名：文件路径}。
     test_limit: 若设置，每来源只处理前 N 条（用于快速自测）。
     """
     import os
@@ -154,7 +161,7 @@ def run(date: str | None = None, test_limit: int | None = None) -> dict[str, Pat
                 name = src["name"]
                 path = URLS_DIR / f"{date}_{name}.json"
                 if not path.exists():
-                    print(f"[SKIP] 未找到 URL 列表: {path}")
+                    print(f"[SKIP] 未找到 URL 列表：{path}")
                     continue
 
                 with open(path, "r", encoding="utf-8") as f:

@@ -36,5 +36,6 @@ SOURCES = [
 ]
 
 # 正文抓取：使用 Playwright 直接访问页面提取（不再使用 jina）
-# 单条正文最大保留字符（避免 token 爆炸）
-MAX_BODY_CHARS = 8000
+# 单条正文最大保留字符
+# qwen3.5-plus 支持 1M tokens 上下文，放宽到 50000 字符，基本保留完整文章
+MAX_BODY_CHARS = 50000
