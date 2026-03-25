@@ -1,6 +1,6 @@
 ---
 name: waimao-neican
-description: 每日抓取雨果网 50 条、邦阅网 50 条、米课圈 100 条，清洗为 Markdown 素材并落盘，合并后调用环境 API 生成带来源 URL 的外贸内参日报；支持一键运行或定时无人值守；可选生成后自动提交到 Git 仓库，通过 Cloudflare Pages 实现全球 CDN 加速和 HTTPS 访问。触发词：每日外贸内参、外贸日报、外贸内参、/neican
+description: 每日抓取雨果网 30 条、邦阅网 30 条、米课圈 140 条，清洗为 Markdown 素材并落盘，合并后调用环境 API 生成带来源 URL 的外贸内参日报；支持一键运行或定时无人值守；可选生成后自动提交到 Git 仓库，通过 Cloudflare Pages 实现全球 CDN 加速和 HTTPS 访问。触发词：每日外贸内参、外贸日报、外贸内参、/neican
 metadata:
   version: 1.1.0
   scope: project

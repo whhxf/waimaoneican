@@ -107,6 +107,7 @@ def _call_llm(merged: str) -> dict:
             {"role": "user", "content": "请根据以下今日抓取的外贸内容，输出一份符合约定结构的 JSON 分析报告。\n\n" + merged[:MAX_INPUT_CHARS]},
         ],
         temperature=0.3,
+        max_tokens=8192,  # 增加输出长度限制
     )
     text = (resp.choices[0].message.content or "").strip()
     # 去掉可能的 markdown 代码块
@@ -116,7 +117,62 @@ def _call_llm(merged: str) -> dict:
     if "```" in text:
         text = re.sub(r"^```[^\n]*\n?", "", text)
         text = re.sub(r"\n?```\s*$", "", text)
-    return json.loads(text)
+    # 清理可能的转义问题和非法字符
+    text = text.replace('\\n', '\n').replace('\\"', '"')
+
+    # 尝试修复截断的 JSON
+    original_text = text
+
+    def try_fix_json(json_str):
+        """尝试修复被截断的 JSON。"""
+        json_str = json_str.strip()
+        # 如果以逗号结尾，去掉
+        while json_str.endswith(','):
+            json_str = json_str[:-1].strip()
+
+        # 统计需要补全的括号
+        open_braces = json_str.count('{') - json_str.count('}')
+        open_brackets = json_str.count('[') - json_str.count(']')
+
+        # 补全括号
+        for _ in range(max(0, open_brackets)):
+            json_str += ']'
+        for _ in range(max(0, open_braces)):
+            json_str += '}'
+
+        return json_str
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        print(f"JSON 解析失败：{e}")
+        print(f"原始响应长度：{len(text)}")
+
+        # 尝试修复
+        fixed_text = try_fix_json(text)
+        print(f"修复后长度：{len(fixed_text)}")
+
+        try:
+            return json.loads(fixed_text)
+        except:
+            pass
+
+        # 如果还是失败，尝试截取到最后一个完整对象
+        print("尝试截取修复...")
+        # 找到最后一个完整的 "}]" 模式（表示数组中对象结束）
+        last_complete = text.rfind('}]')
+        if last_complete > 100:  # 确保有足够的內容
+            truncated = text[:last_complete + 2]
+            fixed_truncated = try_fix_json(truncated)
+            try:
+                result = json.loads(fixed_truncated)
+                print("截取修复成功")
+                return result
+            except:
+                pass
+
+        print(f"无法修复，原始响应前 3000 字符：{text[:3000]}")
+        raise
 
 
 def _ensure_sources(data: dict) -> None:
@@ -129,8 +185,21 @@ def _ensure_sources(data: dict) -> None:
                 item.setdefault("source_urls", [])
 
 
+def _calculate_issue_number(date: str) -> int:
+    """根据日期计算期数 - 从 2026-03-16 开始为第 001 期。"""
+    from datetime import datetime
+    base_date = datetime(2026, 3, 16)  # 第 001 期的日期
+    try:
+        current_date = datetime.strptime(date, "%Y-%m-%d")
+        delta = (current_date - base_date).days
+        return max(1, delta + 1)  # 至少为 1
+    except ValueError:
+        return 1
+
+
 def _render_html(date: str, data: dict) -> str:
     """根据 JSON 渲染五大模块 HTML - 全新视觉设计：数字时代的外贸情报简报。"""
+    issue_number = _calculate_issue_number(date)
     mood = data.get("overall_mood") or {}
     mood_word = mood.get("word", "—")
     mood_reason = mood.get("reason", "")
@@ -656,7 +725,7 @@ def _render_html(date: str, data: dict) -> str:
             <div class="publication-title">外贸内参</div>
             <div class="publication-subtitle">Waimao Intelligence Briefing</div>
             <div class="issue-info">
-                <span>第 001 期</span>
+                <span>第 {issue_number:03d} 期</span>
                 <span>{date}</span>
                 <span>雨果 · 邦阅 · 米课</span>
             </div>

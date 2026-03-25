@@ -6,9 +6,9 @@
 
 | 来源   | 条数  | URL |
 |--------|-------|-----|
-| 雨果网 | 50 条 | https://www.cifnews.com |
-| 邦阅网 | 50 条 | https://www.52by.com |
-| 米课圈 | 100 条 | https://ask.imiker.com/explore/find/ |
+| 雨果网 | 30 条 | https://www.cifnews.com |
+| 邦阅网 | 30 条 | https://www.52by.com |
+| 米课圈 | 140 条 | https://ask.imiker.com/explore/find/ |
 
 ## 环境准备
 

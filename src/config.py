@@ -14,14 +14,14 @@ SOURCES = [
     {
         "name": "雨果网",
         "url": "https://www.cifnews.com",
-        "limit": 50,
+        "limit": 30,
         "url_contains": ["cifnews.com", "/article/"],
         "scroll_times": 2,
     },
     {
         "name": "邦阅网",
         "url": "https://www.52by.com",
-        "limit": 50,
+        "limit": 30,
         "url_contains": ["52by.com"],
         "load_more_text": "加载更多",
         "scroll_times": 3,
@@ -29,7 +29,7 @@ SOURCES = [
     {
         "name": "米课圈",
         "url": "https://ask.imiker.com/explore/find/",
-        "limit": 100,
+        "limit": 140,
         "url_contains": ["ask.imiker.com"],
         "scroll_times": 15,
     },
